@@ -4,10 +4,10 @@ import pandas as pd
 import os
 
 # Параметры
-video_path = r"D:\Hackathon\MainVideo\Материалы_Для_ТЗ\step1\videoset1\Seq1_camera1.mov"
-output_folder = r"D:\Hackathon\photos"
-output_data_file = r"D:\Hackathon\data.txt"
-template_path = r"D:\Hackathon\Sphera\Sph8.png"
+output_folder = r"photos"
+folder_path = "photos"
+output_data_file = "data.txt"
+template_path = r"Sphera\Sph8.png"
 
 # Создаем выходную папку, если она не существует
 os.makedirs(output_folder, exist_ok=True)
@@ -18,30 +18,39 @@ if template is None:
     raise ValueError("Не удалось загрузить шаблон изображения. Проверьте путь.")
 template_height, template_width = template.shape[:2]
 
-# Открываем видео
-cap = cv2.VideoCapture(video_path)
+image_files = sorted([f for f in os.listdir(folder_path) if f.endswith(('.png', '.jpg', '.jpeg'))])
 
-# Инициализация списка для записи данных
+if not image_files:
+    print(f"No image files found in {folder_path}.")
+    raise ValueError("No image files found")
+
+# Initialize a list for storing data (if needed)
 data = []
-frame_number = 0
+
 
 # Обработка видео
-while cap.isOpened():
-    ret, frame = cap.read()
-    if not ret:
-        break
+for frame_number, image_file in enumerate(image_files):
+    frame_path = os.path.join(folder_path, image_file)
+    frame = cv2.imread(frame_path)
+
+    if frame is None:
+        print(f"Error reading image: {frame_path}")
+        continue
 
     # Применяем шаблонное соответствие
     result = cv2.matchTemplate(frame, template, cv2.TM_CCOEFF_NORMED)
     threshold = 0.7  # Минимальная точность
     yloc, xloc = np.where(result >= threshold)
 
-    # Убираем дубликаты координат (если совпадения перекрываются)
     points = list(zip(xloc, yloc))
-    points = list(set(points))
+    values = [result[y, x] for x, y in points]
 
     # Рисуем прямоугольники вокруг найденных объектов
-    for (x, y) in points:
+    if points:  # Check if points list is not empty
+        max_index = np.argmax(values)  # Index of the maximum value
+        best_point = points[max_index]
+        x,y = best_point
+
         cv2.rectangle(frame, (x, y), (x + template_width, y + template_height), (0, 255, 0), 2)
 
         # Сохраняем координаты объекта
@@ -64,10 +73,7 @@ while cap.isOpened():
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
-    frame_number += 1
-
 # Освобождаем ресурсы
-cap.release()
 cv2.destroyAllWindows()
 
 # Сохраняем данные в текстовый файл
