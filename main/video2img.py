@@ -47,7 +47,7 @@ def video_to_frames(video_path, output_folder, desired_fps):
     print(f"Video has been successfully split into frames at {desired_fps} FPS.")
 
 # Example usage:
-video_path = r"C:\Users\zakhar.statkevich\Downloads\telloCV-master\telloCV-master\Seq1_camera1.mov"
-output_folder = "photos"
+video_path = r"C:\Users\zakhar.statkevich\Desktop\Материалы_Для_ТЗ\step1\videoset1\Seq1_camera1.mov"
+output_folder = "photos1"
 desired_fps = 2  # Extract 5 frames per second
 video_to_frames(video_path, output_folder, desired_fps)

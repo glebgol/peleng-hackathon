@@ -2,15 +2,11 @@ import cv2
 import numpy as np
 import pandas as pd
 import os
+import point_process
 
-# Параметры
-output_folder = r"photos"
-folder_path = "photos"
+folder_path = "photos1"
 output_data_file = "data.txt"
 template_path = r"Sphera\Sph8.png"
-
-# Создаем выходную папку, если она не существует
-os.makedirs(output_folder, exist_ok=True)
 
 # Загружаем изображение объекта
 template = cv2.imread(template_path)
@@ -26,7 +22,7 @@ if not image_files:
 
 # Initialize a list for storing data (if needed)
 data = []
-
+track_points = []
 
 # Обработка видео
 for frame_number, image_file in enumerate(image_files):
@@ -43,28 +39,36 @@ for frame_number, image_file in enumerate(image_files):
     yloc, xloc = np.where(result >= threshold)
 
     points = list(zip(xloc, yloc))
-    values = [result[y, x] for x, y in points]
-
-    # Рисуем прямоугольники вокруг найденных объектов
+    values = [result[y, x] for x, y in points] 
     if points:  # Check if points list is not empty
         max_index = np.argmax(values)  # Index of the maximum value
         best_point = points[max_index]
         x,y = best_point
-
-        cv2.rectangle(frame, (x, y), (x + template_width, y + template_height), (0, 255, 0), 2)
-
+        
         # Сохраняем координаты объекта
         object_x = x + template_width // 2
         object_y = y + template_height // 2
         object_length = (template_width + template_height) // 2  # Пример длины объекта
 
-        # Сохраняем данные
+        # Проверяем, если координаты сильно отличаются от предыдущих, то это выброс
+        if track_points and point_process.is_outlier((object_x, object_y), track_points[-1], 500):
+            print("Обнаружен выброс, интерполяция...")
+            track_points.append((np.nan, np.nan))  # Добавляем NaN для последующей интерполяции
+        else:
+            # Добавляем в список точек для трека
+            track_points.append((object_x, object_y))
+
+        track_points = point_process.interpolate_track_points(track_points)
         data.append({
             'Frame': frame_number,
-            'Center_X': object_x,
-            'Center_Y': object_y,
+            'Center_X': (object_x,object_y),
             'Length': object_length
         })
+        last_point = track_points[-1]
+        x, y = last_point[0], last_point[1]
+        x = (int) (x - template_width // 2)
+        y = (int) (y - template_width // 2)
+        cv2.rectangle(frame, (x, y), (x + template_width, y + template_height), (0, 255, 0), 2)
 
     # Отображаем кадр
     cv2.imshow('Tracking', frame)
